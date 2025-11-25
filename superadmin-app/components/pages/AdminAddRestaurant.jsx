@@ -57,9 +57,9 @@ const AdminAddRestaurant = () => {
     }
   };
 
-  const hostname = window.location.hostname.toLowerCase();
-  const port = window.location.port ? `:${window.location.port}` : '';
-  const protocol = window.location.protocol;
+  const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : 'localhost';
+  const port = typeof window !== 'undefined' && window.location.port ? `:${window.location.port}` : '';
+  const protocol = typeof window !== 'undefined' ? window.location.protocol : 'http:';
   const baseDomain = hostname.replace(/^admin\./, '');
 
   console.log('Add Restaurant URL Generation Debug:', {

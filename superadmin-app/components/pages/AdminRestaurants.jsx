@@ -157,9 +157,9 @@ const AdminRestaurants = () => {
   if (!isAuthed) return null;
 
   // helpers for subdomain links
-  const hostname = window.location.hostname.toLowerCase();
-  const port = window.location.port ? `:${window.location.port}` : "";
-  const protocol = window.location.protocol;
+  const hostname = typeof window !== 'undefined' ? window.location.hostname.toLowerCase() : 'localhost';
+  const port = typeof window !== 'undefined' && window.location.port ? `:${window.location.port}` : "";
+  const protocol = typeof window !== 'undefined' ? window.location.protocol : 'http:';
   const baseDomain = hostname.replace(/^admin\./, "");
 
   const subdomainHref = (slug) => {
@@ -239,8 +239,8 @@ const AdminRestaurants = () => {
                       <td className="px-3 py-2">
                         <span
                           className={`text-xs px-2 py-0.5 rounded-full border ${s.status === "active"
-                              ? "bg-green-50 text-green-800 border-green-200"
-                              : "bg-red-50 text-red-800 border-red-200"
+                            ? "bg-green-50 text-green-800 border-green-200"
+                            : "bg-red-50 text-red-800 border-red-200"
                             }`}
                         >
                           {s.status === "active" ? "Active" : "Expired"}
@@ -251,8 +251,8 @@ const AdminRestaurants = () => {
                         <button
                           onClick={() => toggleComment(s.restaurant_id)}
                           className={`px-2 py-1 text-xs rounded ${(restaurants.find(r => r.id === s.restaurant_id)?.comment)
-                              ? 'bg-green-600 text-white'
-                              : 'bg-gray-300 text-gray-700'
+                            ? 'bg-green-600 text-white'
+                            : 'bg-gray-300 text-gray-700'
                             }`}
                         >
                           {(restaurants.find(r => r.id === s.restaurant_id)?.comment) ? 'Enabled' : 'Disabled'}

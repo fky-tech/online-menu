@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useNavigate } from '@/lib/react-router-compat';
 import AdminShell from '@/components/AdminShell';
 import api, { getAuthToken } from '@/lib/api';
@@ -14,10 +14,13 @@ const AdminAddRestaurant = () => {
   const [form, setForm] = useState({ name: '', description: '', logo_url: '', admin_email: '', package_type: 'basic', comment: false });
   const [logoFile, setLogoFile] = useState(null);
 
-  if (!isAuthed) {
-    navigate('/admin/login', { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (!isAuthed) {
+      navigate('/admin/login', { replace: true });
+    }
+  }, [isAuthed, navigate]);
+
+  if (!isAuthed) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();

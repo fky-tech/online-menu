@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getUserFromRequest, isTenantAdmin } from '@/lib/auth';
 
+
+export const dynamic = 'force-dynamic';
 export async function GET(request) {
     try {
         const authResult = await getUserFromRequest(request);

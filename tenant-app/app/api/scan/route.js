@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { resolveRestaurantFromHost } from '@/lib/tenant';
 import { createScanToken } from '@/lib/tokenService';
 
+
+export const dynamic = 'force-dynamic';
 export async function GET(request) {
     try {
         const hostname = request.headers.get('host') || '';

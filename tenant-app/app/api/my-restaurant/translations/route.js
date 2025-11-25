@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getUserFromRequest, isTenantAdmin } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
+
+export const dynamic = 'force-dynamic';
 // GET all translations for restaurant
 export async function GET(request) {
     try {

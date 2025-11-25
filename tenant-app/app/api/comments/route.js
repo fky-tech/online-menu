@@ -4,6 +4,8 @@ import { resolveRestaurantFromHost } from '@/lib/tenant';
 import { validateAndConsumeScanToken } from '@/lib/tokenService';
 import { supabaseAdmin } from '@/lib/supabase';
 
+
+export const dynamic = 'force-dynamic';
 // GET comments for restaurant (tenant admin)
 export async function GET(request) {
     try {

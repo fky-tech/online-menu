@@ -1,0 +1,114 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Default theme (light mode) */
+:root {
+  --brand-background: #F9F9F7;
+  --brand-surface: #ffffff;
+  --brand-border: #e7e5e4;
+
+  /* Theme-specific variables */
+  --brand-primary: #F97316;
+  --brand-text: #1c1917;
+  --brand-muted: #78716c;
+  --brand-button-bg: #F97316;
+  --brand-button-text: #ffffff;
+  --brand-button-hover: #ea580c;
+  --theme-font-family: 'Poppins', sans-serif;
+}
+
+/* Dark mode overrides */
+[data-theme="dark"], .dark {
+  --brand-background: #1a1a1a;
+  --brand-surface: #2d2d2d;
+  --brand-border: #404040;
+  --brand-text: #ffffff;
+  --brand-muted: #a3a3a3;
+  --brand-button-bg: #F97316;
+  --brand-button-text: #ffffff;
+  --brand-button-hover: #ea580c;
+}
+
+/* Modern theme */
+[data-theme="modern"] {
+  --brand-primary: #3b82f6;
+  --brand-text: #1e293b;
+  --brand-muted: #64748b;
+  --brand-button-bg: #3b82f6;
+  --brand-button-text: #ffffff;
+  --brand-button-hover: #2563eb;
+  --theme-font-family: 'Inter', sans-serif;
+}
+
+/* Elegant theme */
+[data-theme="elegant"] {
+  --brand-primary: #7c3aed;
+  --brand-text: #374151;
+  --brand-muted: #6b7280;
+  --brand-button-bg: #7c3aed;
+  --brand-button-text: #ffffff;
+  --brand-button-hover: #6d28d9;
+  --theme-font-family: 'Playfair Display', serif;
+}
+
+/* Warm theme */
+[data-theme="warm"] {
+  --brand-primary: #dc2626;
+  --brand-text: #7f1d1d;
+  --brand-muted: #a87171;
+  --brand-button-bg: #dc2626;
+  --brand-button-text: #ffffff;
+  --brand-button-hover: #b91c1c;
+  --theme-font-family: 'Poppins', sans-serif;
+}
+
+body {
+  background-color: var(--brand-background);
+  color: var(--brand-text);
+  font-family: var(--theme-font-family);
+  transition: color 0.3s ease, font-family 0.3s ease;
+}
+
+/* Update brand colors to use CSS variables */
+.bg-brand-background { background-color: var(--brand-background); }
+.bg-brand-surface { background-color: var(--brand-surface); }
+.text-brand-text { color: var(--brand-text); }
+.text-brand-muted { color: var(--brand-muted); }
+.text-brand-primary { color: var(--brand-primary); }
+.border-brand-border { border-color: var(--brand-border); }
+
+/* Button styles using theme variables */
+.btn-brand {
+  background-color: var(--brand-button-bg);
+  color: var(--brand-button-text);
+  transition: background-color 0.3s ease;
+}
+.btn-brand:hover {
+  background-color: var(--brand-button-hover);
+}
+
+/* Theme-aware text styles */
+.theme-text {
+  color: var(--brand-text);
+  font-family: var(--theme-font-family);
+}
+.theme-muted {
+  color: var(--brand-muted);
+  font-family: var(--theme-font-family);
+}
+.theme-primary {
+  color: var(--brand-primary);
+  font-family: var(--theme-font-family);
+}
+
+/* Custom scrollbar for category pills */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

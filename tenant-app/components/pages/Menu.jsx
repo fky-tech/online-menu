@@ -1,0 +1,398 @@
+'use client';
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import api, { getAuthToken } from "@/lib/api";
+import fallbackMenu from "@/data/fallbackMenu";
+import Layout from "@/components/Layout";
+import LazyImage from "@/components/LazyImage";
+import MenuItemModal from "@/components/MenuItemModal";
+import CommentNotification from "@/components/CommentNotification";
+import { useI18n } from "@/contexts/i18n";
+import { useParams } from "@/lib/react-router-compat";
+
+
+const Menu = () => {
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [query, setQuery] = useState("");
+  const { t, setLang, lang } = useI18n();
+
+
+
+  const searchInputRef = useRef(null);
+  const itemsSectionRef = useRef(null);
+  const [restaurantLanguage, setRestaurantLanguage] = useState('en');
+  const [hasScanToken, setHasScanToken] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [selectedMenuItem, setSelectedMenuItem] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const { slug } = useParams();
+
+
+
+  // Derive slug from current hostname for subdomain tenants in dev/prod
+  const deriveSlugFromHost = () => {
+    const h = window.location.hostname.toLowerCase();
+    const idx = h.indexOf('.localhost');
+    if (idx > 0) return h.slice(0, idx);
+    const root = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || '').toLowerCase();
+    if (root && h.endsWith(root)) {
+      const withoutRoot = h.slice(0, -root.length).replace(/\.$/, '');
+      return withoutRoot || null;
+    }
+    return null;
+  };
+
+
+  // Load restaurant's language setting
+  useEffect(() => {
+    const loadRestaurantLanguage = async () => {
+      try {
+        // Try subdomain-based language endpoint first, then fallback to slug-based
+        let langRes;
+        try {
+          langRes = await api.get('/public/language');
+        } catch (error) {
+          const effectiveSlug = slug || deriveSlugFromHost();
+          if (effectiveSlug && (error.response?.status === 400 || error.response?.status === 404)) {
+            // Fallback to slug-based route
+            langRes = await api.get(`/restaurants/${effectiveSlug}/public/language`);
+          } else {
+            throw error;
+          }
+        }
+
+        const restaurantLang = langRes.data?.data?.primary_language || 'en';
+        setRestaurantLanguage(restaurantLang);
+        console.log('Loaded restaurant language:', restaurantLang);
+      } catch (error) {
+        console.log('Could not load restaurant language:', error);
+        setRestaurantLanguage('en');
+      }
+    };
+
+    loadRestaurantLanguage();
+  }, [slug]);
+
+  // Listen for language updates from admin panel
+  useEffect(() => {
+    const handleLanguageUpdate = (event) => {
+      console.log('Language update event received:', event.detail);
+      const newLanguage = event.detail.language;
+      setRestaurantLanguage(newLanguage);
+    };
+
+    window.addEventListener('languageUpdated', handleLanguageUpdate);
+    return () => window.removeEventListener('languageUpdated', handleLanguageUpdate);
+  }, []);
+
+  // Check for scan token using React Query
+  const { data: scanTokenValid } = useQuery({
+    queryKey: ['scanToken', slug],
+    queryFn: async () => {
+      const useCookies = process.env.NEXT_PUBLIC_USE_SCAN_COOKIES === 'true';
+      const effectiveSlug = slug || deriveSlugFromHost();
+      console.log('checkScanToken: useCookies =', useCookies, 'effectiveSlug =', effectiveSlug);
+
+      if (useCookies) {
+        // Use cookies
+        console.log('Validating with cookies');
+        try {
+          await api.get('/validate-scan-token', { params: effectiveSlug ? { slug: effectiveSlug } : {} });
+          return true;
+        } catch (error) {
+          console.log('Cookie validation failed:', error.response?.status);
+          return false;
+        }
+      } else {
+        // Use localStorage
+        const storedToken = localStorage.getItem('scan_token');
+        console.log('Stored token:', storedToken);
+        if (storedToken) {
+          console.log('Validating with token in headers');
+          try {
+            await api.get('/validate-scan-token', {
+              headers: { 'X-Scan-Token': storedToken },
+              params: effectiveSlug ? { slug: effectiveSlug } : {}
+            });
+            return true;
+          } catch (error) {
+            console.log('Token validation failed:', error.response?.status);
+            // Token invalid, remove it
+            localStorage.removeItem('scan_token');
+            return false;
+          }
+        } else {
+          console.log('No stored token');
+          return false;
+        }
+      }
+    },
+    staleTime: 10 * 60 * 1000, // 10 minutes - scan tokens don't change often
+    cacheTime: 30 * 60 * 1000, // 30 minutes
+  });
+
+  // Set hasScanToken based on query result
+  useEffect(() => {
+    if (scanTokenValid !== undefined) {
+      setHasScanToken(scanTokenValid);
+    }
+  }, [scanTokenValid]);
+
+  // Check authentication (local, no need for query)
+  useEffect(() => {
+    const checkAuthentication = () => {
+      const hasAuth = Boolean(getAuthToken());
+      setIsAuthenticated(hasAuth);
+    };
+    checkAuthentication();
+  }, []);
+
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['menu', slug, lang, restaurantLanguage],
+    queryFn: async () => {
+
+      // Host-based tenancy: backend resolves tenant from Host header.
+      // For local dev routes like /restaurant/:slug, keep passing slug as fallback.
+      const effectiveSlug = slug || deriveSlugFromHost();
+      const params = effectiveSlug ? { slug: effectiveSlug } : {};
+
+      // Use user's selected language for content display
+      // Always pass language parameter to ensure proper translation
+      params.language = lang || 'en';
+
+
+
+      // Try subdomain-based route first, then fallback to slug-based route
+      let res;
+      try {
+        res = await api.get(`/public/menu`, { params });
+      } catch (error) {
+        if (error.response?.status === 400 && effectiveSlug) {
+          // Fallback to slug-based route
+          console.log('Falling back to slug-based route');
+          const fallbackParams = { ...params };
+          delete fallbackParams.slug; // Remove slug from params since it's in the path
+          res = await api.get(`/public/restaurants/${effectiveSlug}/menu`, { params: fallbackParams });
+        } else {
+          throw error;
+        }
+      }
+      const fetchedCats = res?.data?.data?.categories || [];
+      const fetchedItems = res?.data?.data?.items || [];
+
+      // Fetch restaurant data
+      let restaurantData = null;
+      try {
+        const restaurantRes = await api.get(`/restaurants/${effectiveSlug}/public`);
+        restaurantData = restaurantRes.data?.data;
+      } catch (restaurantError) {
+        console.log('Could not fetch restaurant data:', restaurantError);
+      }
+
+      console.log('Menu data fetched:', {
+        categoriesCount: fetchedCats.length,
+        itemsCount: fetchedItems.length,
+        categories: fetchedCats,
+        items: fetchedItems
+      });
+
+      return {
+        categories: fetchedCats,
+        items: fetchedItems,
+        restaurant: restaurantData
+      };
+    },
+    staleTime: 3 * 60 * 1000, // 5 minutes
+    cacheTime: 5 * 1000, // 24 hours for restaurant comment data
+  });
+
+  // Memoize categories to prevent infinite re-renders
+  const categories = useMemo(() => {
+    if (data) {
+      return [{ id: 'all', name: lang === 'am' ? '\u1201\u1209\u121d' : 'All' }, ...data.categories];
+    } else if (error) {
+      // Handle errors similar to original
+      if (error.response?.status === 404 || error.response?.status === 500) {
+        console.log("Using fallback data due to error:", error.response?.status);
+        return fallbackMenu.categories;
+      } else {
+        console.log("Showing empty state due to error:", error.response?.status);
+        return [{ id: 'all', name: t('allCategories') }];
+      }
+    }
+    return [];
+  }, [data, error, lang, t]);
+
+  const menuItems = data?.items || [];
+  const restaurant = data?.restaurant || null;
+
+  useEffect(() => {
+    if (categories.length > 0) {
+      // Reset to first category when categories change (e.g., language change)
+      setSelectedCategory(categories[0]);
+    }
+  }, [categories]);
+
+  const handleCategoryClick = useCallback((category) => {
+    setSelectedCategory(category);
+    setQuery(""); // reset search when changing category
+  }, [setQuery]);
+
+  const handleMenuItemClick = (item) => {
+    setSelectedMenuItem(item);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedMenuItem(null);
+  };
+
+  // Memoize categories to prevent unnecessary re-renders
+  const displayCategories = useMemo(() => {
+    return categories; // Categories are already translated by the API
+  }, [categories]);
+
+  // Memoize filtered items for better performance
+  const filteredItems = useMemo(() => {
+    return menuItems.filter((item) => {
+      const matchesCategory = !selectedCategory || selectedCategory.id === 'all' ? true : item.category_id === selectedCategory.id;
+      const q = query.trim().toLowerCase();
+      const matchesQuery = q === '' ? true : (`${item.name} ${item.description}`.toLowerCase().includes(q));
+      return matchesCategory && matchesQuery;
+    });
+  }, [menuItems, selectedCategory, query]);
+
+  return (
+    <Layout title={lang === 'am' ? 'ሜኑ' : 'Menu'} query={query} setQuery={setQuery} searchInputRef={searchInputRef} hideLanguageToggle={false}>
+      {/* Comment Notification - only show on /scan route with valid token */}
+      {hasScanToken && restaurant?.comment && (
+        <CommentNotification
+          hasScanToken={hasScanToken}
+          restaurant={restaurant}
+          onClose={() => console.log('Notification closed')}
+        />
+      )}
+      {/* Category Pills */}
+      <nav className="sticky top-[57px] z-40 bg-brand-background/95 backdrop-blur-sm border-b border-brand-border/80 overflow-x-auto no-scrollbar">
+        <ul className="flex space-x-4 px-4">
+          {displayCategories.map((cat) => (
+            <li key={cat.id} className="flex-shrink-0">
+              <button
+                className={`py-3 border-b-2 transition-colors duration-200 font-medium text-base tracking-tight theme-text ${selectedCategory?.id === cat.id
+                  ? "border-brand-primary text-brand-primary theme-primary"
+                  : "border-transparent text-brand-muted hover:text-brand-primary theme-muted"
+                  }`}
+                onClick={() => handleCategoryClick(cat)}
+              >
+                {cat.name}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      {/* Search is now in the header (Layout) */}
+
+      {/* Menu Items */}
+      <div className="px-4 py-4">
+        {isLoading ? (
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center space-x-4 p-2 animate-pulse">
+                <div className="w-20 h-20 bg-stone-200 rounded-lg" />
+                <div className="flex-1 space-y-3">
+                  <div className="h-5 w-3/4 bg-stone-200 rounded" />
+                  <div className="h-3 w-full bg-stone-200 rounded" />
+                  <div className="h-3 w-1/2 bg-stone-200 rounded" />
+                </div>
+                <div className="w-16 h-5 bg-stone-200 rounded" />
+              </div>
+            ))}
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🍽️</div>
+            <h3 className="text-xl font-semibold text-brand-text mb-2">
+              {lang === 'am' ? '\u12e8\u121d\u130d\u1265 \u1295\u1325\u120e\u127d \u1308\u1293 \u12a0\u120d\u1270\u1328\u1218\u1229\u121d' : 'No Menu Items Yet'}
+            </h3>
+            <p className="text-brand-muted mb-4">
+              {lang === 'am'
+                ? '\u12ed\u1205 \u122c\u1235\u1276\u122b\u1295\u1275 \u1308\u1293 \u121d\u1295\u121d \u12e8\u121d\u130d\u1265 \u1295\u1325\u120e\u127d\u1295 \u12a0\u120d\u1328\u1218\u1228\u121d\u1362 \u12a5\u1263\u12ad\u12c8 \u1260\u1245\u122d\u1261 \u12ed\u1218\u1208\u1231!'
+                : 'This restaurant hasn\'t added any menu items yet. Check back soon!'
+              }
+            </p>
+            <div className="text-sm text-brand-muted bg-amber-50 border border-amber-200 rounded-lg p-4 max-w-md mx-auto">
+              <p className="font-medium text-amber-800 mb-1">
+                {lang === 'am' ? '\u12e8\u122c\u1235\u1276\u122b\u1295\u1275 \u1263\u1208\u1264\u1275 \u1290\u12c8\u1275?' : 'Restaurant Owner?'}
+              </p>
+              <p className="text-amber-700">
+                {lang === 'am'
+                  ? '\u12c8\u12f0 \u12a0\u12f5\u121a\u1295 \u1218\u130d\u1262\u12eb \u1308\u133d\u12c8 \u12ed\u130d\u1261\u1293 \u121d\u12f5\u1266\u127d\u1295\u1293 \u12e8\u121c\u1291 \u1295\u1325\u120e\u127d\u1295 \u12ed\u1328\u121d\u1229\u1362'
+                  : 'Login to your admin panel to add categories and menu items to your restaurant.'
+                }
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div ref={itemsSectionRef} className="divide-y divide-stone-200/60">
+            {filteredItems.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-start gap-4 py-4 cursor-pointer hover:bg-stone-50/50 transition-colors duration-200 rounded-lg p-2 -m-2"
+                onClick={() => handleMenuItemClick(item)}
+              >
+                <LazyImage
+                  src={item.image_url}
+                  alt={item.name}
+                  className="w-20 h-20 object-cover rounded-lg flex-shrink-0 shadow-sm"
+                  placeholderType="menu"
+                  lazyOptions={{
+                    rootMargin: '100px',
+                    threshold: 0.1
+                  }}
+                  showLoadingSpinner={false}
+                />
+                <div className="flex-grow min-w-0">
+                  <div className="flex justify-between items-start gap-2">
+                    <h3 className="font-bold text-base text-brand-text whitespace-normal break-words">{item.name}</h3>
+                    <div className="font-extrabold text-base text-brand-primary whitespace-nowrap">{`Br ${Number(item.price).toFixed(2)}`}</div>
+                  </div>
+                  <p className="text-brand-muted text-sm mt-1 whitespace-normal break-words">{item.description}</p>
+                  {typeof item.is_available !== 'undefined' && (
+                    <div className="mt-2">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${item.is_available ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                        <span className={`w-2 h-2 rounded-full mr-1.5 ${item.is_available ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                        {item.is_available
+                          ? (lang === 'am' ? '\u12ed\u1308\u129b\u120d' : 'Available')
+                          : (lang === 'am' ? '\u12a0\u12ed\u1308\u129d\u121d' : 'Not available')
+                        }
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+      </div>
+
+
+      {/* Menu Item Modal */}
+      <MenuItemModal
+        open={isModalOpen}
+        item={selectedMenuItem}
+        onClose={handleCloseModal}
+        lang={lang}
+        hasScanToken={hasScanToken}
+        restaurant={restaurant}
+        theme={restaurant?.theme}
+      />
+    </Layout >
+  );
+};
+
+export default React.memo(Menu);

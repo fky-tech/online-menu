@@ -1,5 +1,16 @@
 {
-  "dependencies": {
-    "multer": "^2.0.2"
-  }
+    "name": "online-menu-monorepo",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "dev": "pnpm -r --parallel run dev",
+        "build": "pnpm -r --parallel run build",
+        "lint": "pnpm -r --parallel run lint",
+        "dev:superadmin": "pnpm --filter superadmin-app dev",
+        "dev:tenant": "pnpm --filter tenant-app dev",
+        "dev:marketing": "pnpm --filter marketing-site dev"
+    },
+    "devDependencies": {
+        "concurrently": "^8.2.2"
+    }
 }

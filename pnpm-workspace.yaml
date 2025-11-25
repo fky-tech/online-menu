@@ -1,0 +1,5 @@
+packages:
+  - 'superadmin-app'
+  - 'tenant-app'
+  - 'marketing-site'
+  - 'shared'

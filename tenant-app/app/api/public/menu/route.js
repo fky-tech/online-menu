@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { resolveRestaurantFromHost } from '@/lib/tenant';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
     try {
         const hostname = request.headers.get('host') || '';

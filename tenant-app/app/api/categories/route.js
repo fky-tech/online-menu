@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { getUserFromRequest, isTenantAdmin } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 // GET categories for tenant admin
 export async function GET(request) {
     try {

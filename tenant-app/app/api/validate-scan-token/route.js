@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { resolveRestaurantFromHost } from '@/lib/tenant';
 import { validateScanToken } from '@/lib/tokenService';
 

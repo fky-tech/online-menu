@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getRestaurantBySlug } from '@/lib/tenant';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request, { params }) {
     try {
         const { slug } = await params;

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getUserFromRequest } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+import { getUserFromRequest } from '@/lib/auth';
 export async function GET(request) {
     try {
         const authResult = await getUserFromRequest(request);

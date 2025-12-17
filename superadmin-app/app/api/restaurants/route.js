@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { getUserFromRequest, isSuperAdmin } from '@/lib/auth';
 import { supabaseAdmin, uploadFile, getPublicUrl } from '@/lib/supabase';
-
 // GET all restaurants (super admin only)
 export async function GET(request) {
     try {

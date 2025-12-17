@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { getRestaurantBySlug } from '@/lib/tenant';
 
 export async function GET(request, { params }) {

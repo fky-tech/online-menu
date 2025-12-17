@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
+
+export const dynamic = 'force-dynamic';
 import { getUserFromRequest, isSuperAdmin } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
-
 export async function GET(request) {
     try {
         const authResult = await getUserFromRequest(request);

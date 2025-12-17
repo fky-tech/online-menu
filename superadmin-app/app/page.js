@@ -7,7 +7,7 @@ export default function SuperAdminHome() {
     const router = useRouter();
 
     useEffect(() => {
-        router.push('/login');
+        router.push('/admin/login');
     }, [router]);
 
     return null;
